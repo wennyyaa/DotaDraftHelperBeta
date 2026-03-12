@@ -146,8 +146,7 @@ function App() {
               >
                 <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "4px" }}>
                   MODE
-                </div>    
-                <div style={{ fontSize: "14px", fontWeight: 700 }}>Rule-Based Assistant</div>
+                </div>  <div style={{ fontSize: "14px", fontWeight: 700 }}>Rule-Based Assistant</div>
               </div>
 
               <div
@@ -244,7 +243,15 @@ function App() {
               excludedHeroes={allyHeroes}
             />
           </div>
-
+<div
+  style={{
+    fontSize: "12px",
+    color: "#7b859a",
+    marginTop: "6px",
+  }}
+>
+Type hero names separated by commas. Example: Mars, Puck
+</div>
           <div
             style={{
               display: "flex",
@@ -254,39 +261,51 @@ function App() {
               marginTop: "22px",
             }}
           >
-            <button
-              onClick={handlePredict}
-              disabled={loading}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 14px 28px rgba(20, 103, 255, 0.34)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 10px 24px rgba(20, 103, 255, 0.28)";
-              }}
-              style={{
-                padding: "13px 22px",
-                minWidth: "180px",
-                background: loading
-                  ? "linear-gradient(135deg, #2d5ba8 0%, #1f4d93 100%)"
-                  : "linear-gradient(135deg, #2ba1ff 0%, #1467ff 100%)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "12px",
-                cursor: loading ? "default" : "pointer",
-                fontSize: "14px",
-                fontWeight: 700,
-                boxShadow: "0 10px 24px rgba(20, 103, 255, 0.28)",
-                transition: "transform 0.15s ease, box-shadow 0.15s ease",
-              }}
-            >
-              {loading ? "Predicting..." : "Analyze Draft"}
-            </button>
+           <div
+  style={{
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+    flexWrap: "wrap",
+  }}
+>
+  <button
+    onClick={handlePredict}
+    disabled={loading}
+    style={{
+      padding: "10px 18px",
+      backgroundColor: "#3d72dc",
+      border: "none",
+      borderRadius: "8px",
+      color: "#fff",
+      fontWeight: 700,
+      cursor: loading ? "default" : "pointer",
+      transition: "all 0.15s ease",
+    }}
+  >
+    {loading ? "Analyzing draft..." : "Predict Best Heroes"}
+  </button>
+
+  <button
+    onClick={() => {
+      setAlliesText("");
+      setEnemiesText("");
+      setAllyHeroes([]);
+      setEnemyHeroes([]);
+      setRecommendations([]);
+    }}
+    style={{
+      padding: "10px 16px",
+      backgroundColor: "#1f2633",
+      border: "1px solid #2f394a",
+      borderRadius: "8px",
+      color: "#cfd6e6",
+      cursor: "pointer",
+    }}
+  >
+    Clear Draft
+  </button>
+</div>
 
             <div style={{ fontSize: "13px", color: "#8fa0b8" }}>
               Uses handcrafted draft logic and team composition analysis.

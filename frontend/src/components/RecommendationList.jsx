@@ -102,7 +102,64 @@ function inferTags(rec, goodReasons) {
   return Array.from(tags).slice(0, 3);
 }
 
+function roleMeta(role) {
+  const normalized = String(role || "").toLowerCase();
+
+  if (normalized === "carry") {
+    return {
+      icon: "⚔",
+      label: "Carry",
+      bg: "rgba(255, 184, 77, 0.12)",
+      border: "rgba(255, 184, 77, 0.24)",
+      color: "#ffcb7d",
+    };
+  }
+
+  if (normalized === "mid") {
+    return {
+      icon: "◆",
+      label: "Mid",
+      bg: "rgba(110, 168, 255, 0.12)",
+      border: "rgba(110, 168, 255, 0.24)",
+      color: "#9ac1ff",
+    };
+  }
+
+  if (normalized === "offlane") {
+    return {
+      icon: "🛡",
+      label: "Offlane",
+      bg: "rgba(150, 230, 161, 0.12)",
+      border: "rgba(150, 230, 161, 0.24)",
+      color: "#9de6aa",
+    };
+  }
+
+  return {
+    icon: "✚",
+    label: "Support",
+    bg: "rgba(219, 170, 255, 0.12)",
+    border: "rgba(219, 170, 255, 0.24)",
+    color: "#ddb8ff",
+  };
+}
+
 function RecommendationList({ recommendations }) {
+  if (!recommendations || recommendations.length === 0) {
+  return (
+    <div
+      style={{
+        textAlign: "center",
+        color: "#7b859a",
+        padding: "30px",
+        border: "1px dashed #2f394a",
+        borderRadius: "12px",
+      }}
+    >
+      Select heroes and press <b>Predict Best Picks</b>
+    </div>
+  );
+}
   if (!recommendations || recommendations.length === 0) {
     return null;
   }
@@ -115,6 +172,7 @@ function RecommendationList({ recommendations }) {
         gap: "16px",
       }}
     >
+      
       {recommendations.map((rec, index) => {
         const formattedReasons = (rec.reasons || []).map(formatReason);
         const goodReasons = formattedReasons.filter((r) => r.kind === "good");
@@ -122,35 +180,70 @@ function RecommendationList({ recommendations }) {
         const quickTags = inferTags(rec, goodReasons);
 
         return (
+          
           <div
             key={`${rec.hero}-${index}`}
             style={{
+              position: "relative",
+              overflow: "hidden",
               background:
-                "linear-gradient(180deg, rgba(25,34,48,0.95) 0%, rgba(17,23,32,0.95) 100%)",
+                "linear-gradient(180deg, rgba(25,34,48,0.96) 0%, rgba(16,22,31,0.96) 100%)",
               border: "1px solid rgba(108, 136, 180, 0.14)",
-              borderRadius: "18px",
+              borderRadius: "20px",
               padding: "16px",
               boxShadow: "0 14px 30px rgba(0,0,0,0.22)",
+              transition:
+                "transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+              e.currentTarget.style.borderColor = "rgba(90, 150, 255, 0.28)";
+              e.currentTarget.style.boxShadow = "0 24px 42px rgba(0,0,0,0.32)";
+              e.currentTarget.style.background =
+                "linear-gradient(180deg, rgba(31,43,61,0.98) 0%, rgba(18,25,35,0.98) 100%)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0) scale(1)";
+              e.currentTarget.style.borderColor = "rgba(108, 136, 180, 0.14)";
+              e.currentTarget.style.boxShadow = "0 14px 30px rgba(0,0,0,0.22)";
+              e.currentTarget.style.background =
+                "linear-gradient(180deg, rgba(25,34,48,0.96) 0%, rgba(16,22,31,0.96) 100%)";
             }}
           >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "120px",
+                height: "120px",
+                background:
+                  "radial-gradient(circle, rgba(75,133,255,0.16) 0%, rgba(75,133,255,0) 72%)",
+                pointerEvents: "none",
+              }}
+            />
+
             <div
               style={{
                 display: "flex",
                 alignItems: "flex-start",
                 gap: "12px",
                 marginBottom: "14px",
+                position: "relative",
+                zIndex: 1,
               }}
             >
               <img
                 src={getHeroIcon(rec.hero)}
                 alt={rec.hero}
-                width={68}
-                height={38}
+                width={72}
+                height={40}
                 style={{
-                  borderRadius: "8px",
+                  borderRadius: "10px",
                   objectFit: "cover",
                   flexShrink: 0,
                   backgroundColor: "#0f1115",
+                  border: "1px solid rgba(255,255,255,0.06)",
                 }}
                 onError={(e) => {
                   e.currentTarget.style.opacity = "0.35";
@@ -179,24 +272,33 @@ function RecommendationList({ recommendations }) {
                       flexWrap: "wrap",
                     }}
                   >
-                    {rec.roles.map((role) => (
-                      <span
-                        key={role}
-                        style={{
-                          fontSize: "10px",
-                          padding: "3px 7px",
-                          borderRadius: "999px",
-                          backgroundColor: "#1b2637",
-                          border: "1px solid rgba(108, 136, 180, 0.14)",
-                          color: "#d4def0",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.35px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {role}
-                      </span>
-                    ))}
+                    {rec.roles.map((role) => {
+                      const meta = roleMeta(role);
+
+                      return (
+                        <span
+                          key={role}
+                          title={meta.label}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            fontSize: "10px",
+                            padding: "4px 8px",
+                            borderRadius: "999px",
+                            backgroundColor: meta.bg,
+                            border: `1px solid ${meta.border}`,
+                            color: meta.color,
+                            letterSpacing: "0.35px",
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          <span>{meta.icon}</span>
+                          <span>{meta.label}</span>
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -282,7 +384,14 @@ function RecommendationList({ recommendations }) {
             </div>
 
             {(goodReasons.length > 0 || badReasons.length > 0) && (
-              <div style={{ display: "grid", gap: "14px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "14px",
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
                 {goodReasons.length > 0 && (
                   <div>
                     <div
