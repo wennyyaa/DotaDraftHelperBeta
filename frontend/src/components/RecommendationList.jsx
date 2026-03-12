@@ -74,10 +74,6 @@ function formatReason(reason) {
     return { text: `Weak vs ${weakMatch[2]}`, kind: "bad" };
   }
 
-  if (/^weak historical matchup/i.test(trimmed)) {
-    return { text: trimmed, kind: "bad" };
-  }
-
   return {
     text: trimmed.charAt(0).toUpperCase() + trimmed.slice(1),
     kind: "good",
@@ -96,7 +92,6 @@ function inferTags(rec, goodReasons) {
   if (allText.includes("synergy")) tags.add("Synergy");
   if (allText.includes("frontline")) tags.add("Frontline");
   if (allText.includes("control")) tags.add("Control");
-  if (allText.includes("save")) tags.add("Save");
   if (allText.includes("scaling") || allText.includes("late-game")) tags.add("Scaling");
   if (allText.includes("tempo") || allText.includes("early")) tags.add("Tempo");
   if (allText.includes("tower") || allText.includes("push")) tags.add("Push");
@@ -136,15 +131,6 @@ function RecommendationList({ recommendations }) {
               borderRadius: "18px",
               padding: "16px",
               boxShadow: "0 14px 30px rgba(0,0,0,0.22)",
-              transition: "transform 0.15s ease, border-color 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.borderColor = "rgba(129, 167, 230, 0.28)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = "rgba(108, 136, 180, 0.14)";
             }}
           >
             <div

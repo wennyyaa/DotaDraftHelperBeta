@@ -62,59 +62,7 @@ function App() {
           margin: "0 auto",
           display: "grid",
           gap: "20px",
-        }}
-      >
-        <div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: "12px",
-    marginBottom: "18px",
-  }}
->
-  <div
-    style={{
-      backgroundColor: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: "16px",
-      padding: "14px",
-    }}
-  >
-    <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
-      ALLIES PICKED
-    </div>
-    <div style={{ fontSize: "22px", fontWeight: 800 }}>{allyHeroes.length}</div>
-  </div>
-
-  <div
-    style={{
-      backgroundColor: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: "16px",
-      padding: "14px",
-    }}
-  >
-    <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
-      ENEMIES PICKED
-    </div>
-    <div style={{ fontSize: "22px", fontWeight: 800 }}>{enemyHeroes.length}</div>
-  </div>
-
-  <div
-    style={{
-      backgroundColor: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: "16px",
-      padding: "14px",
-    }}
-  >
-    <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
-      RECOMMENDATIONS
-    </div>
-    <div style={{ fontSize: "22px", fontWeight: 800 }}>{recommendations.length}</div>
-  </div>
-</div>
-
+        }}      >
         <section
           style={{
             background:
@@ -198,8 +146,8 @@ function App() {
               >
                 <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "4px" }}>
                   MODE
-                </div>
-                <div style={{ fontSize: "14px", fontWeight: 700 }}>Rule + Data Hybrid</div>
+                </div>    
+                <div style={{ fontSize: "14px", fontWeight: 700 }}>Rule-Based Assistant</div>
               </div>
 
               <div
@@ -215,6 +163,57 @@ function App() {
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700 }}>Top Recommendations</div>
               </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: "12px",
+              marginBottom: "18px",
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "16px",
+                padding: "14px",
+              }}
+            >
+              <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
+                ALLIES PICKED
+              </div>
+              <div style={{ fontSize: "22px", fontWeight: 800 }}>{allyHeroes.length}</div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "16px",
+                padding: "14px",
+              }}
+            >
+              <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
+                ENEMIES PICKED
+              </div>
+              <div style={{ fontSize: "22px", fontWeight: 800 }}>{enemyHeroes.length}</div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "16px",
+                padding: "14px",
+              }}
+            >
+              <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
+                RECOMMENDATIONS
+              </div>
+              <div style={{ fontSize: "22px", fontWeight: 800 }}>{recommendations.length}</div>
             </div>
           </div>
 
@@ -258,13 +257,24 @@ function App() {
             <button
               onClick={handlePredict}
               disabled={loading}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 14px 28px rgba(20, 103, 255, 0.34)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow =
+                  "0 10px 24px rgba(20, 103, 255, 0.28)";
+              }}
               style={{
                 padding: "13px 22px",
                 minWidth: "180px",
-                background:
-                  loading
-                    ? "linear-gradient(135deg, #2d5ba8 0%, #1f4d93 100%)"
-                    : "linear-gradient(135deg, #2ba1ff 0%, #1467ff 100%)",
+                background: loading
+                  ? "linear-gradient(135deg, #2d5ba8 0%, #1f4d93 100%)"
+                  : "linear-gradient(135deg, #2ba1ff 0%, #1467ff 100%)",
                 color: "#fff",
                 border: "none",
                 borderRadius: "12px",
@@ -272,14 +282,14 @@ function App() {
                 fontSize: "14px",
                 fontWeight: 700,
                 boxShadow: "0 10px 24px rgba(20, 103, 255, 0.28)",
-                
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
               }}
             >
               {loading ? "Predicting..." : "Analyze Draft"}
             </button>
 
             <div style={{ fontSize: "13px", color: "#8fa0b8" }}>
-              Uses composition logic, matchup data, and draft-phase weighting.
+              Uses handcrafted draft logic and team composition analysis.
             </div>
           </div>
 
@@ -312,11 +322,10 @@ function App() {
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: "12px",
-              alignItems: "center",
-              flexWrap: "wrap",
+              display: "grid",
+              gridTemplateColumns: "1.2fr 0.8fr",
+              gap: "16px",
+              alignItems: "stretch",
               marginBottom: "18px",
             }}
           >
@@ -343,41 +352,78 @@ function App() {
 
             <div
               style={{
-                fontSize: "12px",
-                color: "#8ea0b8",
-                backgroundColor: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                borderRadius: "999px",
-                padding: "8px 12px",
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "10px",
               }}
             >
-              {recommendations.length} shown
+              <div
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "14px",
+                  padding: "12px",
+                }}
+              >
+                <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "4px" }}>
+                  RESULTS
+                </div>
+                <div style={{ fontSize: "18px", fontWeight: 800 }}>{recommendations.length}</div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "14px",
+                  padding: "12px",
+                }}
+              >
+                <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "4px" }}>
+                  ALLIES
+                </div>
+                <div style={{ fontSize: "18px", fontWeight: 800 }}>{allyHeroes.length}</div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "14px",
+                  padding: "12px",
+                }}
+              >
+                <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "4px" }}>
+                  ENEMIES
+                </div>
+                <div style={{ fontSize: "18px", fontWeight: 800 }}>{enemyHeroes.length}</div>
+              </div>
             </div>
           </div>
 
           {recommendations.length === 0 ? (
-  <div
-    style={{
-      color: "#90a1b8",
-      fontSize: "14px",
-      border: "1px dashed rgba(144, 161, 184, 0.2)",
-      borderRadius: "18px",
-      padding: "22px",
-      backgroundColor: "rgba(255,255,255,0.02)",
-      display: "grid",
-      gap: "8px",
-    }}
-  >
-    <div style={{ fontSize: "16px", fontWeight: 700, color: "#d8e2f1" }}>
-      No recommendations yet
-    </div>
-    <div>
-      Build both drafts and click <strong>Analyze Draft</strong> to see the best hero suggestions.
-    </div>
-  </div>
-) : (
-  <RecommendationList recommendations={recommendations} />
-)}
+            <div
+              style={{
+                color: "#90a1b8",
+                fontSize: "14px",
+                border: "1px dashed rgba(144, 161, 184, 0.2)",
+                borderRadius: "18px",
+                padding: "22px",
+                backgroundColor: "rgba(255,255,255,0.02)",
+                display: "grid",
+                gap: "8px",
+              }}
+            >
+              <div style={{ fontSize: "16px", fontWeight: 700, color: "#d8e2f1" }}>
+                No recommendations yet
+              </div>
+              <div>
+                Build both drafts and click <strong>Analyze Draft</strong> to see the best hero suggestions.
+              </div>
+            </div>
+          ) : (
+            <RecommendationList recommendations={recommendations} />
+          )}
         </section>
       </div>
     </div>

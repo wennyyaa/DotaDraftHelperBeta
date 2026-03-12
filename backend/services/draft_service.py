@@ -44,4 +44,4 @@ def get_draft_recommendations(
     if filtered:
         return filtered[:k]
 
-    return recommendations[:k]
+    return recommendations[:k] 
