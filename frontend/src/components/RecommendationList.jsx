@@ -58,6 +58,16 @@ function formatReason(reason) {
   }
 
   const trimmed = reason.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (/^weak historical matchup/i.test(trimmed)) {
+    return { text: trimmed, kind: "bad" };
+  }
+
+  const weakMatch = trimmed.match(/^-\d+(\.\d+)?\s+vs\s+(.+?)\s+\(weakness\)$/i);
+  if (weakMatch) {
+    return { text: `Weak vs ${weakMatch[2]}`, kind: "bad" };
+  }
 
   const counterMatch = trimmed.match(/^\+\d+(\.\d+)?\s+vs\s+(.+?)\s+\(counter\)$/i);
   if (counterMatch) {
@@ -69,9 +79,15 @@ function formatReason(reason) {
     return { text: `Synergy with ${synergyMatch[2]}`, kind: "good" };
   }
 
-  const weakMatch = trimmed.match(/^-\d+(\.\d+)?\s+vs\s+(.+?)\s+\(weakness\)$/i);
-  if (weakMatch) {
-    return { text: `Weak vs ${weakMatch[2]}`, kind: "bad" };
+  if (
+    lower.includes("already has enough") ||
+    lower.includes("already has strong") ||
+    lower.includes("too greedy") ||
+    lower.includes("already covered") ||
+    lower.includes("vulnerable to") ||
+    lower.includes("too many")
+  ) {
+    return { text: trimmed, kind: "bad" };
   }
 
   return {
@@ -143,6 +159,44 @@ function roleMeta(role) {
     color: "#ddb8ff",
   };
 }
+function confidenceMeta(confidence) {
+  const value = String(confidence || "").toLowerCase();
+
+  if (value === "best-pick") {
+    return {
+      label: "Best Pick",
+      bg: "rgba(52, 199, 89, 0.12)",
+      border: "rgba(52, 199, 89, 0.24)",
+      color: "#7ee787",
+    };
+  }
+
+  if (value === "strong-fit") {
+    return {
+      label: "Strong Fit",
+      bg: "rgba(61, 114, 220, 0.12)",
+      border: "rgba(61, 114, 220, 0.24)",
+      color: "#9bc0ff",
+    };
+  }
+
+  if (value === "situational") {
+    return {
+      label: "Situational",
+      bg: "rgba(255, 184, 77, 0.12)",
+      border: "rgba(255, 184, 77, 0.24)",
+      color: "#ffcb7d",
+    };
+  }
+
+  return {
+    label: "Risky",
+    bg: "rgba(255, 107, 107, 0.12)",
+    border: "rgba(255, 107, 107, 0.24)",
+    color: "#ff9c9c",
+  };
+}
+
 
 function RecommendationList({ recommendations }) {
   if (!recommendations || recommendations.length === 0) {
@@ -179,6 +233,51 @@ function RecommendationList({ recommendations }) {
         const badReasons = formattedReasons.filter((r) => r.kind === "bad");
         const quickTags = inferTags(rec, goodReasons);
 
+        {badReasons.length > 0 && (
+  <div>
+    <div
+      style={{
+        fontSize: "11px",
+        fontWeight: 800,
+        color: "#ff9898",
+        marginBottom: "7px",
+        textTransform: "uppercase",
+        letterSpacing: "0.4px",
+      }}
+    >
+      Risks
+    </div>
+
+    <ul
+      style={{
+        listStyle: "none",
+        margin: 0,
+        padding: 0,
+        display: "grid",
+        gap: "7px",
+      }}
+    >
+      {badReasons.map((reason, i) => (
+        <li
+          key={`bad-${i}`}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "7px",
+            fontSize: "13px",
+            color: "#ffb3b3",
+            lineHeight: 1.45,
+          }}
+        >
+          <span style={{ color: "#ff6b6b", marginTop: "1px" }}>✖</span>
+          <span>{reason.text}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+        
         return (
           
           <div
@@ -261,6 +360,7 @@ function RecommendationList({ recommendations }) {
                   }}
                 >
                   {rec.hero}
+                  
                 </div>
 
                 {rec.roles && rec.roles.length > 0 && (
@@ -339,15 +439,46 @@ function RecommendationList({ recommendations }) {
                     flexWrap: "wrap",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: rec.score >= 2 ? "#7ee787" : "#f2c14e",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Score: {formatScore(rec.score)}
-                  </div>
+                {(() => {
+  const conf = confidenceMeta(rec.confidence);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "13px",
+          color: rec.score >= 2 ? "#7ee787" : "#f2c14e",
+          fontWeight: 700,
+        }}
+      >
+        Score: {formatScore(rec.score)}
+      </div>
+
+      <span
+        style={{
+          fontSize: "10px",
+          padding: "4px 8px",
+          borderRadius: "999px",
+          backgroundColor: conf.bg,
+          border: `1px solid ${conf.border}`,
+          color: conf.color,
+          fontWeight: 800,
+          letterSpacing: "0.35px",
+          textTransform: "uppercase",
+        }}
+      >
+        {conf.label}
+      </span>
+    </div>
+  );
+})()}
 
                   <span
                     style={{
@@ -415,7 +546,46 @@ function RecommendationList({ recommendations }) {
                         display: "grid",
                         gap: "7px",
                       }}
-                    >
+                    >{badReasons.length > 0 && (
+  <div style={{ marginTop: "10px" }}>
+    <div
+      style={{
+        fontSize: "11px",
+        color: "#ff9c9c",
+        marginBottom: "6px",
+        fontWeight: 700,
+        letterSpacing: "0.5px"
+      }}
+    >
+      Risks
+    </div>
+
+    <ul
+      style={{
+        listStyle: "none",
+        margin: 0,
+        padding: 0,
+        display: "grid",
+        gap: "6px"
+      }}
+    >
+      {badReasons.map((r, i) => (
+        <li
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "12px",
+            color: "#ff9c9c"
+          }}
+        >
+          ✖ {r.text}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
                       {goodReasons.map((reason, i) => (
                         <li
                           key={`good-${i}`}
@@ -429,50 +599,6 @@ function RecommendationList({ recommendations }) {
                           }}
                         >
                           <span style={{ color: "#4caf50", marginTop: "1px" }}>✔</span>
-                          <span>{reason.text}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {badReasons.length > 0 && (
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 800,
-                        color: "#ff9898",
-                        marginBottom: "7px",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.4px",
-                      }}
-                    >
-                      Bad
-                    </div>
-
-                    <ul
-                      style={{
-                        listStyle: "none",
-                        margin: 0,
-                        padding: 0,
-                        display: "grid",
-                        gap: "7px",
-                      }}
-                    >
-                      {badReasons.map((reason, i) => (
-                        <li
-                          key={`bad-${i}`}
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: "7px",
-                            fontSize: "13px",
-                            color: "#ffb3b3",
-                            lineHeight: 1.45,
-                          }}
-                        >
-                          <span style={{ color: "#ff6b6b", marginTop: "1px" }}>✖</span>
                           <span>{reason.text}</span>
                         </li>
                       ))}

@@ -4,6 +4,7 @@ import { getHeroes, predictDraft } from "./api";
 import HeroInput from "./components/HeroInput";
 import RecommendationList from "./components/RecommendationList";
 
+
 function App() {
   const [alliesText, setAlliesText] = useState("");
   const [enemiesText, setEnemiesText] = useState("");
@@ -13,7 +14,9 @@ function App() {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const [draftIdentity, setDraftIdentity] = useState(null);
+  const [targetRole, setTargetRole] = useState("any");
+  const [occupiedRoles, setOccupiedRoles] = useState([]);
   useEffect(() => {
     async function loadHeroes() {
       try {
@@ -33,8 +36,14 @@ function App() {
     setRecommendations([]);
 
     try {
-      const data = await predictDraft(allyHeroes, enemyHeroes);
+ const data = await predictDraft(
+  allyHeroes,
+  enemyHeroes,
+  targetRole === "any" ? null : targetRole,
+  occupiedRoles
+);
       setRecommendations(data.recommended || []);
+      setDraftIdentity(data.identity || null);
     } catch (err) {
       console.error("Predict failed:", err);
       setError(err.message || "Failed to fetch predictions.");
@@ -99,9 +108,9 @@ function App() {
                   letterSpacing: "0.3px",
                   textTransform: "uppercase",
                   fontWeight: 700,
-                }}
+                }}  
               >
-                Dota 2 AI Draft Assistant
+                 Draft helper beta
               </div>
 
               <h1
@@ -269,9 +278,91 @@ Type hero names separated by commas. Example: Mars, Puck
     flexWrap: "wrap",
   }}
 >
+ <div
+  style={{
+
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px 14px",
+    background: "linear-gradient(180deg,#1a2130,#151b26)",
+    border: "1px solid #2a3342",
+    borderRadius: "12px",
+    boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
+  }}
+  onMouseEnter={(e) => {
+  e.currentTarget.style.borderColor = "#3a4860";
+}}
+onMouseLeave={(e) => {
+  e.currentTarget.style.borderColor = "#2a3342";
+}}
+>
+  <span
+    style={{
+      fontSize: "11px",
+      color: "#8fa1bb",
+      fontWeight: 700,
+      letterSpacing: "0.6px",
+      textTransform: "uppercase",
+    }}
+  >
+    Role
+  </span>
+
+ <select
+  value={targetRole}
+  onChange={(e) => setTargetRole(e.target.value)}
+  style={{
+    appearance: "none",
+    WebkitAppearance: "none",
+    MozAppearance: "none",
+    background: "transparent",
+    border: "none",
+    outline: "none",
+    color: "#f4f7fb",
+    fontWeight: 700,
+    fontSize: "14px",
+    paddingRight: "18px",
+    cursor: "pointer",
+  }}
+>
+  
+  <option value="any" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+    Any
+  </option>
+  <option value="carry" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+    Carry
+  </option>
+  <option value="mid" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+    Mid
+  </option>
+  <option value="offlane" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+    Offlane
+  </option>
+  <option value="support" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+    Support
+  </option>
+</select>
+
+  {/* custom arrow */}
+  <div
+    style={{
+      position: "absolute",
+      right: "10px",
+      pointerEvents: "none",
+      fontSize: "12px",
+      color: "#7c8aa3",
+    }}
+  >
+    ▼
+  </div>
+</div>
   <button
+  
     onClick={handlePredict}
     disabled={loading}
+    
     style={{
       padding: "10px 18px",
       backgroundColor: "#3d72dc",
@@ -287,13 +378,19 @@ Type hero names separated by commas. Example: Mars, Puck
   </button>
 
   <button
+  
     onClick={() => {
+      setRecommendations(data.recommended || []);
+      setDraftIdentity(data.identity || null);
       setAlliesText("");
       setEnemiesText("");
       setAllyHeroes([]);
       setEnemyHeroes([]);
       setRecommendations([]);
+      setTargetRole("any");
+      setOccupiedRoles([]);
     }}
+    
     style={{
       padding: "10px 16px",
       backgroundColor: "#1f2633",
@@ -302,8 +399,10 @@ Type hero names separated by commas. Example: Mars, Puck
       color: "#cfd6e6",
       cursor: "pointer",
     }}
+    
   >
     Clear Draft
+    
   </button>
 </div>
 
@@ -419,7 +518,70 @@ Type hero names separated by commas. Example: Mars, Puck
               </div>
             </div>
           </div>
+{draftIdentity && (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: "12px",
+      marginBottom: "18px",
+    }}
+  >
+    <div
+      style={{
+        backgroundColor: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "16px",
+        padding: "14px",
+      }}
+    >
+      <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
+        DRAFT STYLE
+      </div>
+      <div style={{ fontSize: "18px", fontWeight: 800 }}>{draftIdentity.style}</div>
+    </div>
 
+    <div
+      style={{
+        backgroundColor: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "16px",
+        padding: "14px",
+      }}
+    >
+      <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
+        STRENGTHS
+      </div>
+      <div style={{ display: "grid", gap: "4px" }}>
+        {(draftIdentity.strengths || []).map((item) => (
+          <div key={item} style={{ fontSize: "13px", color: "#7ee787" }}>
+            • {item}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div
+      style={{
+        backgroundColor: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "16px",
+        padding: "14px",
+      }}
+    >
+      <div style={{ fontSize: "11px", color: "#7f90a8", marginBottom: "6px" }}>
+        WEAKNESSES
+      </div>
+      <div style={{ display: "grid", gap: "4px" }}>
+        {(draftIdentity.weaknesses || []).map((item) => (
+          <div key={item} style={{ fontSize: "13px", color: "#ffb3b3" }}>
+            • {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
           {recommendations.length === 0 ? (
             <div
               style={{

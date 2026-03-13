@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .models import DraftRecommendation, DraftRequest, DraftResponse, DraftIdentity
+from .services.draft_identity import build_draft_identity
+
+
 
 from .heroes import HERO_POOL
 from .models import DraftRecommendation, DraftRequest, DraftResponse
@@ -23,15 +27,22 @@ app.add_middleware(
 
 @app.post("/predict", response_model=DraftResponse)
 def predict(payload: DraftRequest) -> DraftResponse:
-    """Return the top 5 draft recommendations for the given matchup."""
+
 
     recs = draft_service.get_draft_recommendations(
-        payload.allies, payload.enemies, k=12
-    )
-
+    payload.allies,
+    payload.enemies,
+    k=8,
+    target_role=payload.target_role,
+    occupied_roles=payload.occupied_roles,
+)
     recommended = [DraftRecommendation(**rec) for rec in recs]
+    identity = DraftIdentity(**build_draft_identity(payload.allies))
 
-    return DraftResponse(recommended=recommended)
+    return DraftResponse(
+        recommended=recommended,
+        identity=identity,
+    )
 
 
 @app.get("/heroes")

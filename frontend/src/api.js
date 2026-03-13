@@ -11,11 +11,17 @@ export async function getHeroes() {
     throw error;
   }
 }
-
-export async function predictDraft(allies, enemies) {
+export async function predictDraft(
+  allies,
+  enemies,
+  targetRole = null,
+  occupiedRoles = []
+) {
   const payload = {
     allies,
     enemies,
+    target_role: targetRole,
+    occupied_roles: occupiedRoles,
   };
 
   try {

@@ -11,6 +11,17 @@ from typing import Dict, List, Sequence, Tuple
 
 from .services import draft_service
 
+def classify_confidence(score: float) -> str:
+    if score >= 5.0:
+        return "best-pick"
+
+    if score >= 3.0:
+        return "strong-fit"
+
+    if score >= 1.5:
+        return "situational"
+
+    return "risky"
 
 def recommend_with_explanations(
     allies: Sequence[str],
