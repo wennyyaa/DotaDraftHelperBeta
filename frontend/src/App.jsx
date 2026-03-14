@@ -576,25 +576,7 @@ function App() {
                       You play: {ROLE_LABELS[autoDetectedRole]}
                     </div>
                   )}
-
-                  {allyHeroes.length >= 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedRoles((prev) => !prev)}
-                      style={{
-                        padding: "8px 12px",
-                        borderRadius: "10px",
-                        border: "1px solid #2a3342",
-                        background: "#111722",
-                        color: "#d7deea",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {showAdvancedRoles ? "Hide Role Slots" : "Set Ally Roles"}
-                    </button>
-                  )}
+                  
 
                   {!autoDetectedRole && !showAdvancedRoles && (
                     <div
