@@ -10,18 +10,21 @@ from .services.draft_needs import analyze_draft_needs
 from .heroes import HERO_POOL
 from .models import DraftRecommendation, DraftRequest, DraftResponse
 from .services import draft_service  # stable service layer; hides rule vs ML engine details
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="Dota 2 Draft Helper API")
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
+        
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
+        "https://dota-draft-helper-beta.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
