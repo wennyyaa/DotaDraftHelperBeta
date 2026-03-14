@@ -13,85 +13,57 @@ from ..data.hero_attributes import (
     SAVE_HEROES,
     SPECIAL_THREAT_RULES,
 )
+from .archetype_engine import archetype_score
+from .enemy_strategy import detect_enemy_strategy, strategy_counter_score
+from .features_engines import get_hero_features, team_feature_summary
+from .slot_features import slot_missing_roles
 
+def ally_slot_score(hero: str, ally_slots=None) -> tuple[float, list[str]]:
+    
 
-def lane_matchup_score(hero: str, enemies: list[str], allies: list[str]) -> tuple[float, list[str]]:
+    if not ally_slots:
+        return 0.0, []
+
+    hero_roles = HERO_ROLES.get(hero, [])
+    missing_roles = slot_missing_roles(ally_slots)
+
     score = 0.0
     reasons: list[str] = []
 
-    hero_lane_rules = LANE_COUNTER_RULES.get(hero, {})
-    for enemy in enemies:
-        bonus = hero_lane_rules.get(enemy)
-        if bonus:
-            score += bonus
-            reasons.append(f"Strong lane matchup vs {enemy}")
+    for role in missing_roles:
+        if role in hero_roles:
+            if role == "carry":
+                score += 1.8
+            elif role == "mid":
+                score += 1.3
+            elif role == "offlane":
+                score += 1.6
+            elif role == "support":
+                score += 1.4
 
-    for enemy in enemies:
-        counters_for_enemy = SPECIAL_THREAT_RULES.get(enemy, {})
-        bonus = counters_for_enemy.get(hero)
-        if bonus:
-            score += bonus
-            reasons.append(f"Special answer to {enemy}")
+            reasons.append(f"Fits open {role} slot")
+
+    slot_data = ally_slots.model_dump()
+
+    filled_roles = []
+    if slot_data.get("carry"):
+        filled_roles.append("carry")
+    if slot_data.get("mid"):
+        filled_roles.append("mid")
+    if slot_data.get("offlane"):
+        filled_roles.append("offlane")
+    if slot_data.get("support") or slot_data.get("hard_support"):
+        filled_roles.append("support")
+
+    if filled_roles and not any(role in missing_roles for role in hero_roles):
+        overlap_with_filled = [role for role in hero_roles if role in filled_roles]
+        if overlap_with_filled:
+            score -= 0.5
+            reasons.append("Most natural role already filled")
 
     return round(score, 1), reasons
 
-def get_draft_phase(allies: list[str], enemies: list[str]) -> str:
-    total_picked = len(allies) + len(enemies)
 
-    if total_picked <= 3:
-        return "early"
-
-    if total_picked <= 6:
-        return "mid"
-
-    return "late"
-
-
-def draft_phase_score(hero: str, allies: list[str], enemies: list[str]) -> tuple[float, list[str]]:
-    phase = get_draft_phase(allies, enemies)
-
-    if phase == "early":
-        if hero in FLEX_SAFE_HEROES:
-            return 0.8, ["Safe and flexible early pick"]
-        return 0.0, []
-
-    if phase == "mid":
-        if hero in FLEX_SAFE_HEROES:
-            return 0.3, ["Stable mid-draft option"]
-        return 0.0, []
-
-    return 0.0, []
-
-
-def save_score(hero: str, allies: list[str], enemies: list[str]) -> tuple[float, list[str]]:
-    if hero not in SAVE_HEROES:
-        return 0.0, []
-
-    ally_save_count = sum(1 for ally in allies if ally in SAVE_HEROES)
-    enemy_threat_count = sum(1 for enemy in enemies if enemy in BURST_OR_LOCKDOWN_HEROES)
-
-    if enemy_threat_count == 0:
-        return 0.0, []
-
-    if ally_save_count == 0 and enemy_threat_count >= 1:
-        return 1.0, ["Provides defensive save"]
-
-    if ally_save_count == 1 and enemy_threat_count >= 2:
-        return 0.5, ["Adds extra protection for allies"]
-
-    return 0.0, []
-
-
-def anti_illusion_score(hero: str, enemies: list[str]) -> tuple[float, list[str]]:
-    illusion_enemy = any(enemy in ILLUSION_OR_SUMMON_HEROES for enemy in enemies)
-
-    if not illusion_enemy:
-        return 0.0, []
-
-    if hero in ANTI_ILLUSION_HEROES:
-        return 1.2, ["Strong against illusions and summons"]
-
-    return 0.0, []
 
 
 def role_balance_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
@@ -116,7 +88,92 @@ def role_balance_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
         score += 0.8
         reasons.append("Adds offlane presence")
 
-    return score, reasons
+    return round(score, 1), reasons
+
+
+def infer_team_roles(allies: list[str]) -> dict[str, int]:
+    role_counts = {
+        "carry": 0,
+        "mid": 0,
+        "offlane": 0,
+        "support": 0,
+    }
+
+    for ally in allies:
+        for role in HERO_ROLES.get(ally, []):
+            if role in role_counts:
+                role_counts[role] += 1
+
+    return role_counts
+
+
+def role_inference_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
+    role_counts = infer_team_roles(allies)
+    hero_roles = HERO_ROLES.get(hero, [])
+
+    score = 0.0
+    reasons: list[str] = []
+
+    for role, count in role_counts.items():
+        if count == 0 and role in hero_roles:
+            if role == "carry":
+                score += 1.6
+            elif role == "mid":
+                score += 1.1
+            elif role == "offlane":
+                score += 1.4
+            elif role == "support":
+                score += 1.0
+            reasons.append(f"Team lacks {role}")
+
+    for role, count in role_counts.items():
+        if count >= 2 and role in hero_roles:
+            if role == "support":
+                score -= 0.7
+            else:
+                score -= 0.5
+            reasons.append(f"Too many {role}s already")
+
+    return round(score, 1), reasons
+
+
+def feature_reasoning_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
+    team_summary = team_feature_summary(allies)
+    hero_features = get_hero_features(hero)
+
+    score = 0.0
+    reasons: list[str] = []
+
+    if team_summary["frontline"] == 0 and hero_features.get("frontline", 0) == 1:
+        score += 1.0
+        reasons.append("Provides needed frontline")
+
+    if team_summary["control"] <= 1 and hero_features.get("control", 0) == 1:
+        score += 0.8
+        reasons.append("Adds reliable control")
+
+    if team_summary["teamfight"] == 0 and hero_features.get("teamfight", 0) == 1:
+        score += 0.7
+        reasons.append("Improves teamfight presence")
+
+    if team_summary["push"] == 0 and hero_features.get("push", 0) == 1:
+        score += 0.6
+        reasons.append("Adds objective pressure")
+
+    if team_summary["save"] == 0 and hero_features.get("save", 0) == 1:
+        score += 0.6
+        reasons.append("Provides defensive utility")
+
+    if team_summary["scaling"] == 0 and hero_features.get("scaling", 0) == 1:
+        score += 0.6
+        reasons.append("Improves late-game scaling")
+
+    return round(score, 1), reasons
+
+
+def archetype_reasoning_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
+    hero_features = get_hero_features(hero)
+    return archetype_score(hero, allies, hero_features)
 
 
 def frontline_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
@@ -141,10 +198,10 @@ def scaling_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
         return 0.0, []
 
     if ally_scaling == 0:
-        return 0.8, ["Adds strong late-game scaling"]
+        return 1.0, ["Adds strong late-game scaling"]
 
     if ally_scaling == 1:
-        return 0.3, ["Improves late-game potential"]
+        return 0.4, ["Improves late-game potential"]
 
     return 0.0, []
 
@@ -191,24 +248,245 @@ def tempo_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
     return 0.0, []
 
 
+def negative_reasoning_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
+    score = 0.0
+    reasons: list[str] = []
 
-def team_needs_score(hero: str, allies: list[str], enemies: list[str]) -> tuple[float, list[str]]:
+    hero_features = get_hero_features(hero)
+    team_summary = team_feature_summary(allies)
+
+    if hero_features.get("frontline", 0) == 1 and team_summary["frontline"] >= 2:
+        score -= 0.5
+        reasons.append("Team already has enough frontline")
+
+    if hero_features.get("control", 0) == 1 and team_summary["control"] >= 3:
+        score -= 0.4
+        reasons.append("Draft already has strong control")
+
+    if hero_features.get("scaling", 0) == 1 and team_summary["scaling"] >= 2:
+        score -= 0.4
+        reasons.append("Team may become too greedy")
+
+    if hero_features.get("push", 0) == 1 and team_summary["push"] >= 2:
+        score -= 0.3
+        reasons.append("Push pressure already covered")
+
+    return round(score, 1), reasons
+
+def normalize_role(role: str | None) -> str | None:
+    if role == "hard_support":
+        return "support"
+    return role
+
+def role_preference_score(hero: str, target_role: str | None) -> tuple[float, list[str]]:
+    target_role = normalize_role(target_role)
+
+    if not target_role:
+        return 0.0, []
+
+    hero_roles = HERO_ROLES.get(hero, [])
+
+    if target_role in hero_roles:
+        return 2.5, [f"Preferred {target_role} pick for this draft"]
+
+    return -0.3, []
+
+
+def anti_illusion_score(hero: str, enemies: list[str]) -> tuple[float, list[str]]:
+    illusion_enemy = any(enemy in ILLUSION_OR_SUMMON_HEROES for enemy in enemies)
+
+    if not illusion_enemy:
+        return 0.0, []
+
+    if hero in ANTI_ILLUSION_HEROES:
+        return 1.2, ["Strong against illusions and summons"]
+
+    return 0.0, []
+
+
+def save_score(hero: str, allies: list[str], enemies: list[str]) -> tuple[float, list[str]]:
+    if hero not in SAVE_HEROES:
+        return 0.0, []
+
+    ally_save_count = sum(1 for ally in allies if ally in SAVE_HEROES)
+    enemy_threat_count = sum(1 for enemy in enemies if enemy in BURST_OR_LOCKDOWN_HEROES)
+
+    if enemy_threat_count == 0:
+        return 0.0, []
+
+    if ally_save_count == 0 and enemy_threat_count >= 1:
+        return 1.0, ["Provides defensive save"]
+
+    if ally_save_count == 1 and enemy_threat_count >= 2:
+        return 0.5, ["Adds extra protection for allies"]
+
+    return 0.0, []
+
+
+def get_draft_phase(allies: list[str], enemies: list[str]) -> str:
+    total_picked = len(allies) + len(enemies)
+
+    if total_picked <= 3:
+        return "early"
+
+    if total_picked <= 6:
+        return "mid"
+
+    return "late"
+
+
+def draft_phase_score(hero: str, allies: list[str], enemies: list[str]) -> tuple[float, list[str]]:
+    phase = get_draft_phase(allies, enemies)
+
+    if phase == "early":
+        if hero in FLEX_SAFE_HEROES:
+            return 0.8, ["Safe and flexible early pick"]
+        return 0.0, []
+
+    if phase == "mid":
+        if hero in FLEX_SAFE_HEROES:
+            return 0.3, ["Stable mid-draft option"]
+        return 0.0, []
+
+    return 0.0, []
+
+
+def lane_matchup_score(hero: str, enemies: list[str], allies: list[str]) -> tuple[float, list[str]]:
+    score = 0.0
+    reasons: list[str] = []
+
+    hero_lane_rules = LANE_COUNTER_RULES.get(hero, {})
+    for enemy in enemies:
+        bonus = hero_lane_rules.get(enemy)
+        if bonus:
+            score += bonus
+            reasons.append(f"Strong lane matchup vs {enemy}")
+
+    for enemy in enemies:
+        counters_for_enemy = SPECIAL_THREAT_RULES.get(enemy, {})
+        bonus = counters_for_enemy.get(hero)
+        if bonus:
+            score += bonus
+            reasons.append(f"Special answer to {enemy}")
+
+    return round(score, 1), reasons
+
+def hard_counter_priority_score(
+    hero: str,
+    enemies: list[str],
+    target_role: str | None = None,
+) -> tuple[float, list[str]]:
+    score = 0.0
+    reasons: list[str] = []
+
+    from ..engines.rule_engine import COUNTERS
+
+    hero_roles = HERO_ROLES.get(hero, [])
+    role_matches = not target_role or target_role in hero_roles
+
+    for enemy in enemies:
+        hero_counters = COUNTERS.get(enemy, {})
+
+        if hero in hero_counters:
+            counter_strength = hero_counters[hero]
+
+            if counter_strength >= 3.0:
+                score += 1.4 if role_matches else 0.35
+                reasons.append(f"Strong counter to {enemy}")
+            elif counter_strength >= 2.0:
+                score += 0.7 if role_matches else 0.2
+
+    return round(score, 1), reasons
+
+
+def enemy_strategy_score(
+    hero: str,
+    enemies: list[str],
+    target_role: str | None = None,
+) -> tuple[float, list[str]]:
+    score = 0.0
+    reasons = []
+
+    hero_roles = HERO_ROLES.get(hero, [])
+
+    illusion_heroes = {"Phantom Lancer", "Naga Siren", "Terrorblade"}
+    heal_heroes = {"Huskar", "Alchemist", "Necrophos"}
+    mobile_heroes = {"Storm Spirit", "Ember Spirit", "Puck", "Void Spirit"}
+
+    hero_aoe = {"Earthshaker", "Sven", "Leshrac", "Underlord", "Axe"}
+    hero_anti_heal = {"Ancient Apparition", "Necrophos", "Doom", "Viper"}
+    hero_lockdown = {"Lion", "Shadow Shaman", "Disruptor", "Silencer"}
+
+    role_matches = not target_role or target_role in hero_roles
+
+    if any(enemy in illusion_heroes for enemy in enemies):
+        if hero in hero_aoe:
+            score += 1.4 if role_matches else 0.4
+            reasons.append("Strong vs illusion heroes")
+
+    if any(enemy in heal_heroes for enemy in enemies):
+        if hero in hero_anti_heal:
+            score += 1.4 if role_matches else 0.5
+            reasons.append("Counters enemy sustain")
+
+    if any(enemy in mobile_heroes for enemy in enemies):
+        if hero in hero_lockdown:
+            score += 1.0 if role_matches else 0.2
+            reasons.append("Reliable lockdown vs mobile heroes")
+
+    return round(score, 1), reasons
+
+def team_needs_score(
+    hero: str,
+    allies: list[str],
+    enemies: list[str],
+    target_role: str | None = None,
+    occupied_roles: list[str] | None = None,
+    ally_slots=None,
+) -> tuple[float, list[str]]:
     total_score = 0.0
     all_reasons: list[str] = []
 
     scorers = [
         role_balance_score,
+        role_inference_score,
+        feature_reasoning_score,
+        archetype_reasoning_score,
         frontline_score,
         scaling_score,
         disable_score,
         push_score,
         tempo_score,
+        negative_reasoning_score,
     ]
 
     for scorer in scorers:
         score, reasons = scorer(hero, allies)
         total_score += score
         all_reasons.extend(reasons)
+
+    # explicit ally slot structure
+    slot_bonus, slot_reasons = ally_slot_score(hero, ally_slots)
+    total_score += slot_bonus
+    all_reasons.extend(slot_reasons)
+
+    # explicit user role preference
+    role_bonus, role_reasons = role_preference_score(hero, target_role)
+    total_score += role_bonus
+    all_reasons.extend(role_reasons)
+
+    # enemy-dependent scorers
+    counter_score, counter_reasons = hard_counter_priority_score(hero, enemies)
+    total_score += counter_score
+    all_reasons.extend(counter_reasons)
+
+    strategy_score, strategy_reasons = enemy_strategy_score(
+        hero,
+        enemies,
+        target_role=target_role,
+    )
+    total_score += strategy_score
+    all_reasons.extend(strategy_reasons)
 
     anti_score, anti_reasons = anti_illusion_score(hero, enemies)
     total_score += anti_score

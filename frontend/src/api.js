@@ -11,27 +11,32 @@ export async function getHeroes() {
     throw error;
   }
 }
+
 export async function predictDraft(
   allies,
   enemies,
-  targetRole = null,
-  occupiedRoles = []
+  role,
+  occupiedRoles,
+  allySlots
 ) {
   const payload = {
     allies,
     enemies,
-    target_role: targetRole,
+    target_role: role,
     occupied_roles: occupiedRoles,
+    ally_slots: allySlots,
   };
 
   try {
     const response = await axios.post(`${BASE_URL}/predict`, payload);
     return response.data;
-  } catch (error) {
+} catch (error) {
     console.error("POST /predict failed:");
     console.error("message:", error.message);
     console.error("response:", error.response?.data);
+    console.error("detail:", JSON.stringify(error.response?.data?.detail, null, 2));
     console.error("status:", error.response?.status);
+    console.error("payload sent:", payload);
     throw error;
   }
 }

@@ -1,64 +1,85 @@
-from .archetype_engine import infer_draft_archetype
-from .features_engines import team_feature_summary
+TEAMFIGHT_HEROES = {
+    "Mars",
+    "Tidehunter",
+    "Enigma",
+    "Phoenix",
+    "Faceless Void",
+    "Magnus",
+    "Warlock",
+    "Dark Seer",
+    "Earthshaker",
+}
+
+PUSH_HEROES = {
+    "Shadow Shaman",
+    "Nature's Prophet",
+    "Lycan",
+    "Beastmaster",
+    "Dragon Knight",
+    "Death Prophet",
+    "Chen",
+    "Broodmother",
+}
+
+PICKOFF_HEROES = {
+    "Storm Spirit",
+    "Puck",
+    "Nyx Assassin",
+    "Bounty Hunter",
+    "Riki",
+    "Clinkz",
+    "Spirit Breaker",
+    "Slark",
+}
+
+GREEDY_HEROES = {
+    "Medusa",
+    "Anti-Mage",
+    "Spectre",
+    "Arc Warden",
+    "Tinker",
+    "Alchemist",
+}
 
 
-def build_draft_identity(allies: list[str]) -> dict:
-    """
-    Build a readable draft identity summary for the allied team.
-    """
+def analyze_draft_identity(allies: list[str]) -> dict:
+    strengths = []
+    weaknesses = []
 
-    archetype, _ = infer_draft_archetype(allies)
-    summary = team_feature_summary(allies)
+    teamfight = sum(hero in TEAMFIGHT_HEROES for hero in allies)
+    push = sum(hero in PUSH_HEROES for hero in allies)
+    pickoff = sum(hero in PICKOFF_HEROES for hero in allies)
+    greedy = sum(hero in GREEDY_HEROES for hero in allies)
 
-    strengths: list[str] = []
-    weaknesses: list[str] = []
+    if teamfight >= 2:
+        strengths.append("strong teamfight")
 
-    if summary["frontline"] >= 2:
-        strengths.append("Strong frontline")
-    elif summary["frontline"] == 0:
-        weaknesses.append("Low frontline")
+    if push >= 2:
+        strengths.append("good tower push")
 
-    if summary["control"] >= 2:
-        strengths.append("Strong control")
-    elif summary["control"] == 0:
-        weaknesses.append("Low control")
+    if pickoff >= 2:
+        strengths.append("strong pickoff potential")
 
-    if summary["teamfight"] >= 2:
-        strengths.append("Strong teamfight")
-    elif summary["teamfight"] == 0:
-        weaknesses.append("Weak teamfight")
+    if greedy >= 2:
+        weaknesses.append("greedy draft")
 
-    if summary["push"] >= 2:
-        strengths.append("Good tower pressure")
-    elif summary["push"] == 0:
-        weaknesses.append("Low push")
+    if teamfight == 0:
+        weaknesses.append("weak teamfight")
 
-    if summary["scaling"] >= 2:
-        strengths.append("Strong late game")
-    elif summary["scaling"] == 0:
-        weaknesses.append("Weak scaling")
+    if push == 0:
+        weaknesses.append("low tower damage")
 
-    if summary["save"] >= 1:
-        strengths.append("Defensive utility")
+    style = "Balanced"
 
-    if not strengths:
-        strengths.append("Balanced structure")
-
-    if not weaknesses:
-        weaknesses.append("No major weaknesses detected")
-
-    pretty_archetype = {
-        "teamfight": "Teamfight",
-        "push": "Push",
-        "pickoff": "Pickoff",
-        "greedy-scaling": "Greedy Scaling",
-        "siege-teamfight": "Siege + Teamfight",
-        "hybrid": "Hybrid",
-        "balanced": "Balanced",
-    }.get(archetype, "Balanced")
+    if teamfight >= push and teamfight >= pickoff:
+        style = "Teamfight"
+    elif push >= teamfight and push >= pickoff:
+        style = "Push"
+    elif pickoff >= teamfight and pickoff >= push:
+        style = "Pickoff"
 
     return {
-        "style": pretty_archetype,
-        "strengths": strengths[:3],
-        "weaknesses": weaknesses[:3],
+        "style": style,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
     }

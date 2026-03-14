@@ -22,6 +22,23 @@ function heroToIconName(hero) {
     "Wraith King": "skeleton_king",
     "Zeus": "zuus",
   };
+  function formatReason(reason) {
+  if (!reason) return "";
+
+  let text = String(reason).trim();
+
+  // "+3.0 vs Huskar (counter)" -> "Counters Huskar"
+  const rawCounterMatch = text.match(/^\+?\d+(\.\d+)?\s+vs\s+(.+?)\s*\(counter\)$/i);
+  if (rawCounterMatch) {
+    return `Counters ${rawCounterMatch[2]}`;
+  }
+
+  // generic cleanup
+  text = text.replace(/\(counter\)/gi, "");
+  text = text.replace(/\s+/g, " ").trim();
+
+  return text;
+}
 
   if (specialNames[hero]) {
     return specialNames[hero];

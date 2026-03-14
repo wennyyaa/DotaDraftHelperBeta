@@ -1,4 +1,4 @@
-# backend/data/hero_features.py
+
 
 HERO_FEATURES = {
 
