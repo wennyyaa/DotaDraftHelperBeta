@@ -17,6 +17,9 @@ function App() {
   const [occupiedRoles, setOccupiedRoles] = useState([]);
   const [showAdvancedRoles, setShowAdvancedRoles] = useState(false);
   const [draftNeeds, setDraftNeeds] = useState(null);
+  useEffect(() => {
+    setRecommendations([]);
+  }, [allyHeroes, enemyHeroes]);
 
   const [allySlots, setAllySlots] = useState({
     carry: "",
@@ -141,8 +144,24 @@ function App() {
 
   async function handlePredict() {
     setError("");
-    setLoading(true);
     setRecommendations([]);
+
+    if (allyHeroes.length === 0 && enemyHeroes.length === 0) {
+      setError("Add some heroes to start draft analysis.");
+      return;
+    }
+
+    if (allyHeroes.length === 0) {
+      setError("Add at least one allied hero.");
+      return;
+    }
+
+    if (enemyHeroes.length === 0) {
+      setError("Add at least one enemy hero.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const normalizedAllySlots = {
@@ -172,36 +191,43 @@ function App() {
       setRecommendations(data.recommended || []);
       setDraftIdentity(data.identity || null);
       setDraftNeeds(data.draft_needs || null);
+
     } catch (err) {
       console.error("Predict failed:", err);
-      setError(err.message || "Failed to fetch predictions.");
+
+      if (err.message?.includes("Network")) {
+        setError("Server connection lost. Try again.");
+      } else {
+        setError("Draft analysis failed. Please try again.");
+      }
+
     } finally {
       setLoading(false);
     }
   }
 
   function renderRecommendationSection(title, items) {
-  if (!items || items.length === 0) return null;
+    if (!items || items.length === 0) return null;
 
-  return (
-    <div style={{ marginTop: "18px" }}>
-      <div
-        style={{
-          fontSize: "13px",
-          fontWeight: 800,
-          color: "#8fa1bb",
-          letterSpacing: "0.5px",
-          textTransform: "uppercase",
-          marginBottom: "10px",
-        }}
-      >
-        {title}
+    return (
+      <div style={{ marginTop: "18px" }}>
+        <div
+          style={{
+            fontSize: "13px",
+            fontWeight: 800,
+            color: "#8fa1bb",
+            letterSpacing: "0.5px",
+            textTransform: "uppercase",
+            marginBottom: "10px",
+          }}
+        >
+          {title}
+        </div>
+
+        <RecommendationList recommendations={items} />
       </div>
-
-      <RecommendationList recommendations={items} />
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div
@@ -289,6 +315,23 @@ function App() {
                 Build both drafts, explore recommendations, and see why each
                 hero fits your current composition.
               </p>
+              <div
+                style={{
+                  marginTop: "14px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "8px 12px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(155,192,255,0.18)",
+                  background: "rgba(155,192,255,0.08)",
+                  color: "#dbe8ff",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                }}
+              >
+                Beta feedback: send bugs, weird picks, and screenshots in Discord
+              </div>
             </div>
 
             <div
@@ -490,139 +533,151 @@ function App() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => setShowAdvancedRoles((prev) => !prev)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #2a3342",
-                  background: "#111722",
-                  color: "#d7deea",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                {showAdvancedRoles ? "Hide Ally Roles" : "Set Ally Roles"}
-              </button>
-
-              {!autoDetectedRole && (
-                <div
+              {allyHeroes.length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedRoles((prev) => !prev)}
                   style={{
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "10px 14px",
-                    background: "linear-gradient(180deg,#1a2130,#151b26)",
+                    padding: "8px 12px",
+                    borderRadius: "10px",
                     border: "1px solid #2a3342",
-                    borderRadius: "12px",
-                    boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#3a4860";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#2a3342";
+                    background: "#111722",
+                    color: "#d7deea",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    cursor: "pointer",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: "#8fa1bb",
-                      fontWeight: 700,
-                      letterSpacing: "0.6px",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Role
-                  </span>
+                  {showAdvancedRoles ? "Hide Role Slots" : "Set Ally Roles"}
+                </button>
+              )}
 
-                  <select
-                    value={targetRole}
-                    onChange={(e) => setTargetRole(e.target.value)}
-                    style={{
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      MozAppearance: "none",
-                      background: "transparent",
-                      border: "none",
-                      outline: "none",
-                      color: "#f4f7fb",
-                      fontWeight: 700,
-                      fontSize: "14px",
-                      paddingRight: "18px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <option
-                      value="any"
+              {!autoDetectedRole && !showAdvancedRoles && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {targetRole === "any" && autoDetectedRole && (
+                    <div
                       style={{
-                        backgroundColor: "#11161f",
-                        color: "#f4f7fb",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(126, 231, 135, 0.22)",
+                        background: "rgba(126, 231, 135, 0.08)",
+                        color: "#bdf7c6",
+                        fontSize: "13px",
+                        fontWeight: 700,
                       }}
                     >
-                      Any
-                    </option>
-                    <option
-                      value="carry"
-                      style={{
-                        backgroundColor: "#11161f",
-                        color: "#f4f7fb",
-                      }}
-                    >
-                      Carry
-                    </option>
-                    <option
-                      value="mid"
-                      style={{
-                        backgroundColor: "#11161f",
-                        color: "#f4f7fb",
-                      }}
-                    >
-                      Mid
-                    </option>
-                    <option
-                      value="offlane"
-                      style={{
-                        backgroundColor: "#11161f",
-                        color: "#f4f7fb",
-                      }}
-                    >
-                      Offlane
-                    </option>
-                    <option
-                      value="support"
-                      style={{
-                        backgroundColor: "#11161f",
-                        color: "#f4f7fb",
-                      }}
-                    >
-                      Support
-                    </option>
-                    <option
-                      value="hard_support"
-                      style={{
-                        backgroundColor: "#11161f",
-                        color: "#f4f7fb",
-                      }}
-                    >
-                      Hard Support
-                    </option>
-                  </select>
+                      You play: {ROLE_LABELS[autoDetectedRole]}
+                    </div>
+                  )}
 
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      pointerEvents: "none",
-                      fontSize: "12px",
-                      color: "#7c8aa3",
-                    }}
-                  >
-                    ▼
-                  </div>
+                  {allyHeroes.length >= 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedRoles((prev) => !prev)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "10px",
+                        border: "1px solid #2a3342",
+                        background: "#111722",
+                        color: "#d7deea",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {showAdvancedRoles ? "Hide Role Slots" : "Set Ally Roles"}
+                    </button>
+                  )}
+
+                  {!autoDetectedRole && !showAdvancedRoles && (
+                    <div
+                      style={{
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "10px 14px",
+                        background: "linear-gradient(180deg,#1a2130,#151b26)",
+                        border: "1px solid #2a3342",
+                        borderRadius: "12px",
+                        boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#3a4860";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "#2a3342";
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: "#8fa1bb",
+                          fontWeight: 700,
+                          letterSpacing: "0.6px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Role
+                      </span>
+
+                      <select
+                        value={targetRole}
+                        onChange={(e) => setTargetRole(e.target.value)}
+                        style={{
+                          appearance: "none",
+                          WebkitAppearance: "none",
+                          MozAppearance: "none",
+                          background: "transparent",
+                          border: "none",
+                          outline: "none",
+                          color: "#f4f7fb",
+                          fontWeight: 700,
+                          fontSize: "14px",
+                          paddingRight: "18px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <option value="any" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+                          Any
+                        </option>
+                        <option value="carry" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+                          Carry
+                        </option>
+                        <option value="mid" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+                          Mid
+                        </option>
+                        <option value="offlane" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+                          Offlane
+                        </option>
+                        <option value="support" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+                          Support
+                        </option>
+                        <option value="hard_support" style={{ backgroundColor: "#11161f", color: "#f4f7fb" }}>
+                          Hard Support
+                        </option>
+                      </select>
+
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: "10px",
+                          pointerEvents: "none",
+                          fontSize: "12px",
+                          color: "#7c8aa3",
+                        }}
+                      >
+                        ▼
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -840,41 +895,74 @@ function App() {
                 onClick={handlePredict}
                 disabled={loading}
                 style={{
-                  padding: "10px 18px",
-                  backgroundColor: "#3d72dc",
-                  border: "none",
-                  borderRadius: "8px",
-                  color: "#fff",
-                  fontWeight: 700,
+                  padding: "12px 20px",
+                  background: loading
+                    ? "linear-gradient(180deg, #31466f, #263758)"
+                    : "linear-gradient(180deg, #5b8cff, #3d72dc)",
+                  border: loading ? "1px solid #3d5079" : "1px solid #6a9bff",
+                  borderRadius: "14px",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  fontSize: "14px",
+                  letterSpacing: "0.2px",
                   cursor: loading ? "default" : "pointer",
-                  transition: "all 0.15s ease",
+                  opacity: loading ? 0.88 : 1,
+                  boxShadow: loading
+                    ? "0 6px 16px rgba(0,0,0,0.18)"
+                    : "0 10px 24px rgba(61,114,220,0.35)",
+                  transform: "translateY(0)",
+                  transition: "all 0.18s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 14px 28px rgba(61,114,220,0.45)";
+                    e.currentTarget.style.filter = "brightness(1.04)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 10px 24px rgba(61,114,220,0.35)";
+                    e.currentTarget.style.filter = "brightness(1)";
+                  }
                 }}
               >
-                {loading ? "Analyzing draft..." : "Predict Best Heroes"}
+                {loading ? "Analyzing draft…" : "✨ Predict Best Heroes"}
               </button>
-
               <button
                 type="button"
                 onClick={handleClearDraft}
                 style={{
-                  padding: "10px 16px",
-                  borderRadius: "12px",
-                  border: "1px solid #2a3342",
-                  background: "linear-gradient(180deg,#1a2130,#151b26)",
+                  padding: "12px 18px",
+                  borderRadius: "14px",
+                  border: "1px solid #2d3848",
+                  background: "linear-gradient(180deg, #1a2230, #111823)",
                   color: "#d7deea",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: "14px",
+                  letterSpacing: "0.2px",
                   cursor: "pointer",
-                  transition: "all 0.15s ease",
+                  boxShadow: "0 8px 18px rgba(0,0,0,0.20)",
+                  transform: "translateY(0)",
+                  transition: "all 0.18s ease",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#3a4860";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.borderColor = "#46556b";
+                  e.currentTarget.style.boxShadow = "0 12px 22px rgba(0,0,0,0.28)";
+                  e.currentTarget.style.background =
+                    "linear-gradient(180deg, #202a3a, #151d29)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#2a3342";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.borderColor = "#2d3848";
+                  e.currentTarget.style.boxShadow = "0 8px 18px rgba(0,0,0,0.20)";
+                  e.currentTarget.style.background =
+                    "linear-gradient(180deg, #1a2230, #111823)";
                 }}
               >
-                Clear Draft
+                ↺ Clear Draft
               </button>
             </div>
 
@@ -886,13 +974,15 @@ function App() {
           {error && (
             <div
               style={{
-                marginTop: "14px",
-                color: "#ff9d9d",
+                marginTop: "16px",
+                padding: "14px 16px",
+                borderRadius: "14px",
+                background: "rgba(255, 120, 120, 0.08)",
+                border: "1px solid rgba(255,120,120,0.18)",
+                color: "#ffb3b3",
                 fontSize: "14px",
-                backgroundColor: "rgba(255, 88, 88, 0.08)",
-                border: "1px solid rgba(255, 88, 88, 0.18)",
-                borderRadius: "12px",
-                padding: "12px 14px",
+                fontWeight: 600,
+                lineHeight: 1.4,
               }}
             >
               {error}
