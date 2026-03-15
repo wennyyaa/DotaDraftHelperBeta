@@ -1,6 +1,6 @@
 from ..data.hero_attributes import HERO_ROLES
 from ..engines.rule_engine import recommend_with_explanations
-from ..ml.predict_model import ml_score_bonus
+
 
 from .scoring import team_needs_score
 from .explanation_engine import summarize_reasons

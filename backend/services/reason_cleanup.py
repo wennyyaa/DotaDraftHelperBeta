@@ -1,5 +1,3 @@
-from .reason_cleanup import dedupe_reasons
-
 def normalize_reason(reason: str) -> str:
     if not reason:
         return ""
@@ -12,7 +10,6 @@ def normalize_reason(reason: str) -> str:
         "Provides defensive save": "Defensive save",
         "Adds frontline": "Frontline",
         "Adds late-game scaling": "Late-game scaling",
-       
         "Preferred carry pick for this draft": "Good carry pick",
         "Preferred mid pick for this draft": "Good mid pick",
         "Preferred offlane pick for this draft": "Good offlane pick",
@@ -57,7 +54,6 @@ def is_noise_reason(reason: str, target_role: str | None = None) -> bool:
     if any(text.startswith(prefix) for prefix in noisy_exact_or_prefix):
         return True
 
-    # when role is selected, hide unrelated role-clash chatter
     if target_role:
         unrelated = {
             "carry": ["offlane", "support", "mid"],
@@ -78,7 +74,6 @@ def dedupe_reasons(reasons: list[str], target_role: str | None = None) -> list[s
     cleaned: list[str] = []
     seen = set()
 
-    # semantic buckets so same idea does not appear 3 times
     bucket_taken = {
         "counter": False,
         "push": False,
@@ -101,7 +96,6 @@ def dedupe_reasons(reasons: list[str], target_role: str | None = None) -> list[s
 
         lower = normalized.lower()
 
-        # semantic bucketing
         bucket = None
 
         if "counter" in lower or lower.startswith("counters "):
@@ -118,7 +112,12 @@ def dedupe_reasons(reasons: list[str], target_role: str | None = None) -> list[s
             bucket = "scaling"
         elif "lane" in lower or "matchup" in lower:
             bucket = "lane"
-        elif "good carry pick" in lower or "good mid pick" in lower or "good offlane pick" in lower or "good support pick" in lower:
+        elif (
+            "good carry pick" in lower
+            or "good mid pick" in lower
+            or "good offlane pick" in lower
+            or "good support pick" in lower
+        ):
             bucket = "role_pick"
         elif "safe pick" in lower or "stable pick" in lower:
             bucket = "utility"
