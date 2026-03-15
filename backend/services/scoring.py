@@ -390,7 +390,6 @@ def lane_matchup_score(hero: str, enemies: list[str], allies: list[str]) -> tupl
             reasons.append(f"Special answer to {enemy}")
 
     return round(score, 1), reasons
-
 def hard_counter_priority_score(
     hero: str,
     enemies: list[str],
@@ -404,18 +403,19 @@ def hard_counter_priority_score(
     hero_roles = HERO_ROLES.get(hero, [])
     role_matches = not target_role or target_role in hero_roles
 
+    hero_counter_map = COUNTERS.get(hero, {})
+
+    if not hero_counter_map:
+        return 0.0, []
+
     best_counter_strength = 0.0
     best_enemy = None
 
     for enemy in enemies:
-        # COUNTERS is assumed as:
-        # COUNTERS[enemy][hero] = how strong hero is against enemy
-        enemy_counters = COUNTERS.get(enemy, {})
-
-        if hero not in enemy_counters:
+        if enemy not in hero_counter_map:
             continue
 
-        counter_strength = float(enemy_counters[hero])
+        counter_strength = float(hero_counter_map[enemy])
 
         if counter_strength > best_counter_strength:
             best_counter_strength = counter_strength
@@ -424,7 +424,7 @@ def hard_counter_priority_score(
     if best_enemy is None:
         return 0.0, []
 
-    # cap counter influence so it doesn't dominate the whole ranking
+    # Keep counter influence noticeable, but not overwhelming.
     if role_matches:
         if best_counter_strength >= 3.0:
             score = 1.0
@@ -433,7 +433,7 @@ def hard_counter_priority_score(
             score = 0.5
             reasons.append(f"Counters {best_enemy}")
     else:
-        # off-role counters should barely matter
+        # Off-role counters should barely matter.
         if best_counter_strength >= 3.0:
             score = 0.15
         elif best_counter_strength >= 2.0:
