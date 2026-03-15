@@ -404,17 +404,40 @@ def hard_counter_priority_score(
     hero_roles = HERO_ROLES.get(hero, [])
     role_matches = not target_role or target_role in hero_roles
 
+    best_counter_strength = 0.0
+    best_enemy = None
+
     for enemy in enemies:
-        hero_counters = COUNTERS.get(enemy, {})
+        # COUNTERS is assumed as:
+        # COUNTERS[enemy][hero] = how strong hero is against enemy
+        enemy_counters = COUNTERS.get(enemy, {})
 
-        if hero in hero_counters:
-            counter_strength = hero_counters[hero]
+        if hero not in enemy_counters:
+            continue
 
-            if counter_strength >= 3.0:
-                score += 1.4 if role_matches else 0.35
-                reasons.append(f"Strong counter to {enemy}")
-            elif counter_strength >= 2.0:
-                score += 0.7 if role_matches else 0.2
+        counter_strength = float(enemy_counters[hero])
+
+        if counter_strength > best_counter_strength:
+            best_counter_strength = counter_strength
+            best_enemy = enemy
+
+    if best_enemy is None:
+        return 0.0, []
+
+    # cap counter influence so it doesn't dominate the whole ranking
+    if role_matches:
+        if best_counter_strength >= 3.0:
+            score = 1.0
+            reasons.append(f"Strong counter to {best_enemy}")
+        elif best_counter_strength >= 2.0:
+            score = 0.5
+            reasons.append(f"Counters {best_enemy}")
+    else:
+        # off-role counters should barely matter
+        if best_counter_strength >= 3.0:
+            score = 0.15
+        elif best_counter_strength >= 2.0:
+            score = 0.05
 
     return round(score, 1), reasons
 

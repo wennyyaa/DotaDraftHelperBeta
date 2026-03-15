@@ -1,3 +1,5 @@
+from .reason_cleanup import dedupe_reasons
+
 def normalize_reason(reason: str) -> str:
     if not reason:
         return ""
@@ -10,14 +12,7 @@ def normalize_reason(reason: str) -> str:
         "Provides defensive save": "Defensive save",
         "Adds frontline": "Frontline",
         "Adds late-game scaling": "Late-game scaling",
-        "Fits open carry slot": "Fits carry role",
-        "Fits open mid slot": "Fits mid role",
-        "Fits open offlane slot": "Fits offlane role",
-        "Fits open support slot": "Fits support role",
-        "Fills missing carry role": "Fits carry role",
-        "Fills missing mid role": "Fits mid role",
-        "Fills missing offlane role": "Fits offlane role",
-        "Fills missing support role": "Fits support role",
+       
         "Preferred carry pick for this draft": "Good carry pick",
         "Preferred mid pick for this draft": "Good mid pick",
         "Preferred offlane pick for this draft": "Good offlane pick",
@@ -36,16 +31,33 @@ def is_noise_reason(reason: str, target_role: str | None = None) -> bool:
 
     text = reason.lower().strip()
 
-    noisy_prefixes = [
+    noisy_exact_or_prefix = [
         "too many offlanes already",
         "too many supports already",
         "too many mids already",
         "too many carries already",
+        "fits carry role",
+        "fits mid role",
+        "fits offlane role",
+        "fits support role",
+        "fills missing carry role",
+        "fills missing mid role",
+        "fills missing offlane role",
+        "fills missing support role",
+        "fits open carry slot",
+        "fits open mid slot",
+        "fits open offlane slot",
+        "fits open support slot",
+        "team lacks carry",
+        "team lacks mid",
+        "team lacks offlane",
+        "team lacks support",
     ]
 
-    if any(text.startswith(prefix) for prefix in noisy_prefixes):
+    if any(text.startswith(prefix) for prefix in noisy_exact_or_prefix):
         return True
 
+    # when role is selected, hide unrelated role-clash chatter
     if target_role:
         unrelated = {
             "carry": ["offlane", "support", "mid"],
@@ -66,7 +78,18 @@ def dedupe_reasons(reasons: list[str], target_role: str | None = None) -> list[s
     cleaned: list[str] = []
     seen = set()
 
-    role_bucket_taken = False
+    # semantic buckets so same idea does not appear 3 times
+    bucket_taken = {
+        "counter": False,
+        "push": False,
+        "disable": False,
+        "save": False,
+        "frontline": False,
+        "scaling": False,
+        "lane": False,
+        "utility": False,
+        "role_pick": False,
+    }
 
     for reason in reasons:
         if is_noise_reason(reason, target_role=target_role):
@@ -78,28 +101,33 @@ def dedupe_reasons(reasons: list[str], target_role: str | None = None) -> list[s
 
         lower = normalized.lower()
 
-        role_bucket_markers = [
-            "fits carry role",
-            "fits mid role",
-            "fits offlane role",
-            "fits support role",
-            "good carry pick",
-            "good mid pick",
-            "good offlane pick",
-            "good support pick",
-            "team lacks carry",
-            "team lacks mid",
-            "team lacks offlane",
-            "team lacks support",
-        ]
+        # semantic bucketing
+        bucket = None
 
-        if any(marker in lower for marker in role_bucket_markers):
-            if role_bucket_taken:
-                continue
-            role_bucket_taken = True
+        if "counter" in lower or lower.startswith("counters "):
+            bucket = "counter"
+        elif "pusher" in lower or "tower" in lower or "push" in lower:
+            bucket = "push"
+        elif "disable" in lower or "control" in lower or "stun" in lower:
+            bucket = "disable"
+        elif "save" in lower:
+            bucket = "save"
+        elif "frontline" in lower or "tank" in lower:
+            bucket = "frontline"
+        elif "scaling" in lower or "late-game" in lower:
+            bucket = "scaling"
+        elif "lane" in lower or "matchup" in lower:
+            bucket = "lane"
+        elif "good carry pick" in lower or "good mid pick" in lower or "good offlane pick" in lower or "good support pick" in lower:
+            bucket = "role_pick"
+        elif "safe pick" in lower or "stable pick" in lower:
+            bucket = "utility"
 
-            if "team lacks" in lower:
-                continue
+        if bucket is not None and bucket_taken[bucket]:
+            continue
+
+        if bucket is not None:
+            bucket_taken[bucket] = True
 
         if lower not in seen:
             seen.add(lower)
