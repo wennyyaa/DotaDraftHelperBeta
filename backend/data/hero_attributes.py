@@ -65,7 +65,7 @@ HERO_ROLES: dict[str, list[str]] = {
     "Muerta": ["carry", "support"],
     "Naga Siren": ["carry"],
     "Nature's Prophet": ["carry", "offlane"],
-    "Necrophos": ["mid", "offlane", "carry"],
+    "Necrophos": ["mid", "offlane", ],
     "Night Stalker": ["offlane"],
     "Nyx Assassin": ["support"],
     "Ogre Magi": ["support"],
