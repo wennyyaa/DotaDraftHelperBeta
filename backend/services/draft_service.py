@@ -5,11 +5,14 @@ from ..ml.predict_model import ml_score_bonus
 from .scoring import team_needs_score
 from .explanation_engine import summarize_reasons
 from .recommendation_label import infer_recommendation_label
+from .reason_cleanup import dedupe_reasons
 
 
-# ----------------------------
-# Role normalization
-# ----------------------------
+
+
+
+
+
 
 
 def normalize_role(role: str | None) -> str | None:
@@ -18,9 +21,7 @@ def normalize_role(role: str | None) -> str | None:
     return role
 
 
-# ----------------------------
-# Confidence classifier
-# ----------------------------
+
 
 
 
@@ -125,17 +126,13 @@ def get_draft_recommendations(
             ally_slots=ally_slots,
         )
 
-        ml_score, ml_reasons = ml_score_bonus(
-            hero,
-            allies,
-            enemies,
-            target_role=target_role,
-            ally_slots=ally_slots,
-        )
+        ml_score = 0.0
+        ml_reasons = []
 
         total_score = round(base_score + comp_score + ml_score, 1)
 
-        all_reasons = base_reasons + comp_reasons + ml_reasons
+        raw_reasons = base_reasons + comp_reasons + ml_reasons
+        all_reasons = dedupe_reasons(raw_reasons, target_role=target_role)
 
         summary = summarize_reasons(hero, all_reasons)
 

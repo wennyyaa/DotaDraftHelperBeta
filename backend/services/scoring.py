@@ -18,6 +18,7 @@ from .enemy_strategy import detect_enemy_strategy, strategy_counter_score
 from .features_engines import get_hero_features, team_feature_summary
 from .slot_features import slot_missing_roles
 
+
 def ally_slot_score(hero: str, ally_slots=None) -> tuple[float, list[str]]:
     
 
@@ -64,7 +65,26 @@ def ally_slot_score(hero: str, ally_slots=None) -> tuple[float, list[str]]:
     return round(score, 1), reasons
 
 
+def add_bucket_score(
+    buckets: dict[str, float],
+    bucket_name: str,
+    score: float,
+    cap: float,
+) -> float:
 
+    current = buckets.get(bucket_name, 0.0)
+
+    if score <= 0:
+        buckets[bucket_name] = current + score
+        return score
+
+    remaining = cap - current
+    if remaining <= 0:
+        return 0.0
+
+    applied = min(score, remaining)
+    buckets[bucket_name] = current + applied
+    return applied
 
 def role_balance_score(hero: str, allies: list[str]) -> tuple[float, list[str]]:
     ally_roles = []
@@ -446,62 +466,74 @@ def team_needs_score(
 ) -> tuple[float, list[str]]:
     total_score = 0.0
     all_reasons: list[str] = []
+    buckets: dict[str, float] = {}
 
-    scorers = [
-        role_balance_score,
-        role_inference_score,
-        feature_reasoning_score,
-        archetype_reasoning_score,
-        frontline_score,
-        scaling_score,
-        disable_score,
-        push_score,
-        tempo_score,
-        negative_reasoning_score,
-    ]
+    def apply(
+        bucket_name: str,
+        bucket_cap: float,
+        score: float,
+        reasons: list[str],
+    ) -> None:
+        nonlocal total_score, all_reasons
 
-    for scorer in scorers:
-        score, reasons = scorer(hero, allies)
-        total_score += score
-        all_reasons.extend(reasons)
+        applied = add_bucket_score(buckets, bucket_name, score, bucket_cap)
 
-    # explicit ally slot structure
-    slot_bonus, slot_reasons = ally_slot_score(hero, ally_slots)
-    total_score += slot_bonus
-    all_reasons.extend(slot_reasons)
+        if applied > 0:
+            total_score += applied
+            all_reasons.extend(reasons)
 
-    # explicit user role preference
-    role_bonus, role_reasons = role_preference_score(hero, target_role)
-    total_score += role_bonus
-    all_reasons.extend(role_reasons)
+        elif score < 0:
+            total_score += score
+            all_reasons.extend(reasons)
 
-    # enemy-dependent scorers
-    counter_score, counter_reasons = hard_counter_priority_score(hero, enemies)
-    total_score += counter_score
-    all_reasons.extend(counter_reasons)
+    role_score_1, role_reasons_1 = role_balance_score(hero, allies)
+    apply("role", 2.2, role_score_1, role_reasons_1)
+
+    role_score_2, role_reasons_2 = role_preference_score(hero, target_role)
+    apply("role", 2.2, role_score_2, role_reasons_2)
+
+    role_score_3, role_reasons_3 = ally_slot_score(hero, ally_slots)
+    apply("role", 2.2, role_score_3, role_reasons_3)
+
+    frontline_bonus, frontline_reasons = frontline_score(hero, allies)
+    apply("team_needs", 2.4, frontline_bonus, frontline_reasons)
+
+    scaling_bonus, scaling_reasons = scaling_score(hero, allies)
+    apply("team_needs", 2.4, scaling_bonus, scaling_reasons)
+
+    disable_bonus, disable_reasons = disable_score(hero, allies)
+    apply("team_needs", 2.4, disable_bonus, disable_reasons)
+
+    push_bonus, push_reasons = push_score(hero, allies)
+    apply("team_needs", 2.4, push_bonus, push_reasons)
+
+    tempo_bonus, tempo_reasons = tempo_score(hero, allies)
+    apply("team_needs", 2.4, tempo_bonus, tempo_reasons)
+
+    counter_score, counter_reasons = hard_counter_priority_score(
+        hero,
+        enemies,
+        target_role=target_role,
+    )
+    apply("counter", 2.0, counter_score, counter_reasons)
+
+    anti_score, anti_reasons = anti_illusion_score(hero, enemies)
+    apply("counter", 2.0, anti_score, anti_reasons)
 
     strategy_score, strategy_reasons = enemy_strategy_score(
         hero,
         enemies,
         target_role=target_role,
     )
-    total_score += strategy_score
-    all_reasons.extend(strategy_reasons)
-
-    anti_score, anti_reasons = anti_illusion_score(hero, enemies)
-    total_score += anti_score
-    all_reasons.extend(anti_reasons)
+    apply("counter", 2.0, strategy_score, strategy_reasons)
 
     save_bonus, save_reasons = save_score(hero, allies, enemies)
-    total_score += save_bonus
-    all_reasons.extend(save_reasons)
+    apply("utility", 1.2, save_bonus, save_reasons)
 
     phase_bonus, phase_reasons = draft_phase_score(hero, allies, enemies)
-    total_score += phase_bonus
-    all_reasons.extend(phase_reasons)
+    apply("phase", 0.8, phase_bonus, phase_reasons)
 
     lane_bonus, lane_reasons = lane_matchup_score(hero, enemies, allies)
-    total_score += lane_bonus
-    all_reasons.extend(lane_reasons)
+    apply("lane", 1.0, lane_bonus, lane_reasons)
 
     return round(total_score, 1), all_reasons
